@@ -47,6 +47,14 @@ func (m *{{.Impl}}) Verify(pk PublicKey, msg []byte, signature []byte) bool {
 	return {{.Pkg}}.Verify(ipk, msg, signature)
 }
 
+func (m *{{.Impl}}) Signer(sk PrivateKey) Signer {
+	return {{.Pkg}}.NewSigner(sk.(*{{.Pkg}}.PrivateKey))
+}
+
+func (m *{{.Impl}}) Verifier(pk PublicKey) Verifier {
+	return {{.Pkg}}.NewVerifier(pk.(*{{.Pkg}}.PublicKey))
+}
+
 func (m *{{.Impl}}) PublicKeyFromBytes(data []byte) PublicKey {
 	var ret {{.Pkg}}.PublicKey
 	if len(data) != {{.Pkg}}.PublicKeySize {

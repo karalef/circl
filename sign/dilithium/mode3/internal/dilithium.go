@@ -241,6 +241,228 @@ func (sk *PrivateKey) computeT0andT1(t0, t1 *VecK) {
 	t.Power2Round(t0, t1)
 }
 
+// NewSigner returns a new signature State.
+func NewSigner(sk *PrivateKey) *State {
+	return &State{
+		sk:    sk,
+		state: createState(sk.tr[:]),
+	}
+}
+
+// NewVerifier returns a new verification State.
+func NewVerifier(pk *PublicKey) *State {
+	return &State{
+		pk:    pk,
+		state: createState(pk.tr[:]),
+	}
+}
+
+func createState(tr []byte) sha3.State {
+	s := sha3.NewShake256()
+	_, _ = s.Write(tr)
+	return s
+}
+
+// State represents a signature state.
+type State struct {
+	pk    *PublicKey
+	sk    *PrivateKey
+	state sha3.State
+}
+
+func (s *State) Write(p []byte) (int, error) {
+	return s.state.Write(p)
+}
+
+func (s *State) Sign() []byte {
+	signature := make([]byte, SignatureSize)
+	s.SignTo(signature)
+	return signature
+}
+
+func (s *State) SignTo(signature []byte) {
+	var mu, rhop [64]byte
+	var w1Packed [PolyW1Size * K]byte
+	var y, yh VecL
+	var w, w0, w1, w0mcs2, ct0, w0mcs2pct0 VecK
+	var ch common.Poly
+	var yNonce uint16
+	var sig unpackedSignature
+
+	if len(signature) < SignatureSize {
+		panic("Signature does not fit in that byteslice")
+	}
+
+	//  μ = CRH(tr ‖ msg)
+	_, _ = s.state.Read(mu[:])
+
+	// ρ' = CRH(key ‖ μ)
+	s.state.Reset()
+	_, _ = s.state.Write(s.sk.key[:])
+	_, _ = s.state.Write(mu[:])
+	_, _ = s.state.Read(rhop[:])
+
+	// Main rejection loop
+	attempt := 0
+	for {
+		attempt++
+		if attempt >= 576 {
+			// Depending on the mode, one try has a chance between 1/7 and 1/4
+			// of succeeding.  Thus it is safe to say that 576 iterations
+			// are enough as (6/7)⁵⁷⁶ < 2⁻¹²⁸.
+			panic("This should only happen 1 in  2^{128}: something is wrong.")
+		}
+
+		// y = ExpandMask(ρ', key)
+		VecLDeriveUniformLeGamma1(&y, &rhop, yNonce)
+		yNonce += uint16(L)
+
+		// Set w to A y
+		yh = y
+		yh.NTT()
+		for i := 0; i < K; i++ {
+			PolyDotHat(&w[i], &s.sk.A[i], &yh)
+			w[i].ReduceLe2Q()
+			w[i].InvNTT()
+		}
+
+		// Decompose w into w₀ and w₁
+		w.NormalizeAssumingLe2Q()
+		w.Decompose(&w0, &w1)
+
+		// c~ = H(μ ‖ w₁)
+		w1.PackW1(w1Packed[:])
+		s.state.Reset()
+		_, _ = s.state.Write(mu[:])
+		_, _ = s.state.Write(w1Packed[:])
+		_, _ = s.state.Read(sig.c[:])
+
+		PolyDeriveUniformBall(&ch, &sig.c)
+		ch.NTT()
+
+		// Ensure ‖ w₀ - c·s2 ‖_∞ < γ₂ - β.
+		//
+		// By Lemma 3 of the specification this is equivalent to checking that
+		// both ‖ r₀ ‖_∞ < γ₂ - β and r₁ = w₁, for the decomposition
+		// w - c·s₂	 = r₁ α + r₀ as computed by decompose().
+		// See also §4.1 of the specification.
+		for i := 0; i < K; i++ {
+			w0mcs2[i].MulHat(&ch, &s.sk.s2h[i])
+			w0mcs2[i].InvNTT()
+		}
+		w0mcs2.Sub(&w0, &w0mcs2)
+		w0mcs2.Normalize()
+
+		if w0mcs2.Exceeds(Gamma2 - Beta) {
+			continue
+		}
+
+		// z = y + c·s₁
+		for i := 0; i < L; i++ {
+			sig.z[i].MulHat(&ch, &s.sk.s1h[i])
+			sig.z[i].InvNTT()
+		}
+		sig.z.Add(&sig.z, &y)
+		sig.z.Normalize()
+
+		// Ensure  ‖z‖_∞ < γ₁ - β
+		if sig.z.Exceeds(Gamma1 - Beta) {
+			continue
+		}
+
+		// Compute c·t₀
+		for i := 0; i < K; i++ {
+			ct0[i].MulHat(&ch, &s.sk.t0h[i])
+			ct0[i].InvNTT()
+		}
+		ct0.NormalizeAssumingLe2Q()
+
+		// Ensure ‖c·t₀‖_∞ < γ₂.
+		if ct0.Exceeds(Gamma2) {
+			continue
+		}
+
+		// Create the hint to be able to reconstruct w₁ from w - c·s₂ + c·t0.
+		// Note that we're not using makeHint() in the obvious way as we
+		// do not know whether ‖ sc·s₂ - c·t₀ ‖_∞ < γ₂.  Instead we note
+		// that our makeHint() is actually the same as a makeHint for a
+		// different decomposition:
+		//
+		// Earlier we ensured indirectly with a check that r₁ = w₁ where
+		// r = w - c·s₂.  Hence r₀ = r - r₁ α = w - c·s₂ - w₁ α = w₀ - c·s₂.
+		// Thus  MakeHint(w₀ - c·s₂ + c·t₀, w₁) = MakeHint(r0 + c·t₀, r₁)
+		// and UseHint(w - c·s₂ + c·t₀, w₁) = UseHint(r + c·t₀, r₁).
+		// As we just ensured that ‖ c·t₀ ‖_∞ < γ₂ our usage is correct.
+		w0mcs2pct0.Add(&w0mcs2, &ct0)
+		w0mcs2pct0.NormalizeAssumingLe2Q()
+		hintPop := sig.hint.MakeHint(&w0mcs2pct0, &w1)
+		if hintPop > Omega {
+			continue
+		}
+
+		break
+	}
+
+	sig.Pack(signature[:])
+}
+
+func (s *State) Verify(signature []byte) bool {
+	var sig unpackedSignature
+	var mu [64]byte
+	var zh VecL
+	var Az, Az2dct1, w1 VecK
+	var ch common.Poly
+	var cp [32]byte
+	var w1Packed [PolyW1Size * K]byte
+
+	// Note that Unpack() checked whether ‖z‖_∞ < γ₁ - β
+	// and ensured that there at most ω ones in pk.hint.
+	if !sig.Unpack(signature) {
+		return false
+	}
+
+	_, _ = s.state.Read(mu[:])
+
+	// Compute Az
+	zh = sig.z
+	zh.NTT()
+
+	for i := 0; i < K; i++ {
+		PolyDotHat(&Az[i], &s.pk.A[i], &zh)
+	}
+
+	// Next, we compute Az - 2ᵈ·c·t₁.
+	// Note that the coefficients of t₁ are bounded by 256 = 2⁹,
+	// so the coefficients of Az2dct1 will bounded by 2⁹⁺ᵈ = 2²³ < 2q,
+	// which is small enough for NTT().
+	Az2dct1.MulBy2toD(&s.pk.t1)
+	Az2dct1.NTT()
+	PolyDeriveUniformBall(&ch, &sig.c)
+	ch.NTT()
+	for i := 0; i < K; i++ {
+		Az2dct1[i].MulHat(&Az2dct1[i], &ch)
+	}
+	Az2dct1.Sub(&Az, &Az2dct1)
+	Az2dct1.ReduceLe2Q()
+	Az2dct1.InvNTT()
+	Az2dct1.NormalizeAssumingLe2Q()
+
+	// UseHint(pk.hint, Az - 2ᵈ·c·t₁)
+	//    = UseHint(pk.hint, w - c·s₂ + c·t₀)
+	//    = UseHint(pk.hint, r + c·t₀)
+	//    = r₁ = w₁.
+	w1.UseHint(&Az2dct1, &sig.hint)
+	w1.PackW1(w1Packed[:])
+
+	// c' = H(μ, w₁)
+	s.state.Reset()
+	_, _ = s.state.Write(mu[:])
+	_, _ = s.state.Write(w1Packed[:])
+	_, _ = s.state.Read(cp[:])
+
+	return sig.c == cp
+}
+
 // Verify checks whether the given signature by pk on msg is valid.
 func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
 	var sig unpackedSignature

@@ -35,7 +35,6 @@ import (
 
 	"github.com/cloudflare/circl/ecc/goldilocks"
 	"github.com/cloudflare/circl/internal/sha3"
-	"github.com/cloudflare/circl/sign"
 )
 
 const (
@@ -111,10 +110,6 @@ func (priv PrivateKey) Seed() []byte {
 	copy(seed, priv[:SeedSize])
 	return seed
 }
-
-func (priv PrivateKey) Scheme() sign.Scheme { return sch }
-
-func (pub PublicKey) Scheme() sign.Scheme { return sch }
 
 func (priv PrivateKey) MarshalBinary() (data []byte, err error) {
 	privateKey := make(PrivateKey, PrivateKeySize)

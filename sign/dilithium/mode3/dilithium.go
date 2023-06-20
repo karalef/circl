@@ -35,6 +35,9 @@ type PublicKey internal.PublicKey
 // PrivateKey is the type of Dilithium3 private key
 type PrivateKey internal.PrivateKey
 
+// State is the type of Dilithium3 state
+type State = internal.State
+
 // GenerateKey generates a public/private key pair using entropy from rand.
 // If rand is nil, crypto/rand.Reader will be used.
 func GenerateKey(rand io.Reader) (*PublicKey, *PrivateKey, error) {
@@ -65,6 +68,16 @@ func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
 		msg,
 		signature,
 	)
+}
+
+// NewSigner creates a signature state.
+func NewSigner(sk *PrivateKey) *State {
+	return internal.NewSigner((*internal.PrivateKey)(sk))
+}
+
+// NewVerifier creates a signature verification state.
+func NewVerifier(pk *PublicKey) *State {
+	return internal.NewVerifier((*internal.PublicKey)(pk))
 }
 
 // Sets pk to the public key encoded in buf.

@@ -189,7 +189,7 @@ func (sk *PrivateKey) UnmarshalBinary(data []byte) error {
 func (sk *PrivateKey) Scheme() sign.Scheme { return sch }
 func (pk *PublicKey) Scheme() sign.Scheme  { return sch }
 
-func (sk *PrivateKey) Equal(other crypto.PrivateKey) bool {
+func (sk *PrivateKey) Equal(other sign.PrivateKey) bool {
 	castOther, ok := other.(*PrivateKey)
 	if !ok {
 		return false
@@ -197,7 +197,7 @@ func (sk *PrivateKey) Equal(other crypto.PrivateKey) bool {
 	return castOther.e.Equal(sk.e) && castOther.d.Equal(&sk.d)
 }
 
-func (pk *PublicKey) Equal(other crypto.PublicKey) bool {
+func (pk *PublicKey) Equal(other sign.PublicKey) bool {
 	castOther, ok := other.(*PublicKey)
 	if !ok {
 		return false
@@ -231,7 +231,7 @@ func (sk *PrivateKey) Sign(
 //
 // Returns a *PublicKey.  The type crypto.PublicKey is used to make
 // PrivateKey implement the crypto.Signer interface.
-func (sk *PrivateKey) Public() crypto.PublicKey {
+func (sk *PrivateKey) Public() sign.PublicKey {
 	return &PublicKey{
 		sk.e.Public().(ed25519.PublicKey),
 		*sk.d.Public().(*mode2.PublicKey),

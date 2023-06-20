@@ -43,6 +43,14 @@ func (m *implMode2) Verify(pk PublicKey, msg []byte, signature []byte) bool {
 	return mode2.Verify(ipk, msg, signature)
 }
 
+func (m *implMode2) Signer(sk PrivateKey) Signer {
+	return mode2.NewSigner(sk.(*mode2.PrivateKey))
+}
+
+func (m *implMode2) Verifier(pk PublicKey) Verifier {
+	return mode2.NewVerifier(pk.(*mode2.PublicKey))
+}
+
 func (m *implMode2) PublicKeyFromBytes(data []byte) PublicKey {
 	var ret mode2.PublicKey
 	if len(data) != mode2.PublicKeySize {

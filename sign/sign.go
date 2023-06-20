@@ -6,35 +6,27 @@
 package sign
 
 import (
-	"crypto"
 	"encoding"
 	"errors"
 )
 
-type SignatureOpts struct {
-	// If non-empty, includes the given context in the signature if supported
-	// and will cause an error during signing otherwise.
-	Context string
-}
-
-// A public key is used to verify a signature set by the corresponding private
+// PublicKey is used to verify a signature set by the corresponding private
 // key.
 type PublicKey interface {
 	// Returns the signature scheme for this public key.
 	Scheme() Scheme
-	Equal(crypto.PublicKey) bool
+	Equal(PublicKey) bool
+
 	encoding.BinaryMarshaler
-	crypto.PublicKey
 }
 
-// A private key allows one to create signatures.
+// PrivateKey allows one to create signatures.
 type PrivateKey interface {
 	// Returns the signature scheme for this private key.
 	Scheme() Scheme
-	Equal(crypto.PrivateKey) bool
-	// For compatibility with Go standard library
-	crypto.Signer
-	crypto.PrivateKey
+	Public() PublicKey
+	Equal(PrivateKey) bool
+
 	encoding.BinaryMarshaler
 }
 
@@ -47,19 +39,19 @@ type Scheme interface {
 	GenerateKey() (PublicKey, PrivateKey, error)
 
 	// Creates a signature using the PrivateKey on the given message and
-	// returns the signature. opts are additional options which can be nil.
+	// returns the signature.
 	//
-	// Panics if key is nil or wrong type or opts context is not supported.
-	Sign(sk PrivateKey, message []byte, opts *SignatureOpts) []byte
+	// Panics if key is nil or wrong type.
+	Sign(sk PrivateKey, message []byte) []byte
 
 	// Checks whether the given signature is a valid signature set by
 	// the private key corresponding to the given public key on the
-	// given message. opts are additional options which can be nil.
+	// given message.
 	//
-	// Panics if key is nil or wrong type or opts context is not supported.
-	Verify(pk PublicKey, message []byte, signature []byte, opts *SignatureOpts) bool
+	// Panics if key is nil or wrong type.
+	Verify(pk PublicKey, message []byte, signature []byte) bool
 
-	// Deterministically derives a keypair from a seed. If you're unsure,
+	// Deterministically derives a key-pair from a seed. If you're unsure,
 	// you're better off using GenerateKey().
 	//
 	// Panics if seed is not of length SeedSize().
@@ -82,9 +74,6 @@ type Scheme interface {
 
 	// Size of seeds.
 	SeedSize() int
-
-	// Returns whether contexts are supported.
-	SupportsContext() bool
 }
 
 var (
@@ -103,8 +92,4 @@ var (
 	// ErrPrivKeySize is the error used if the provided private key is of
 	// the wrong size.
 	ErrPrivKeySize = errors.New("wrong size for private key")
-
-	// ErrContextNotSupported is the error used if a context is not
-	// supported.
-	ErrContextNotSupported = errors.New("context not supported")
 )

@@ -66,3 +66,41 @@ func TestNewKeyFromSeed(t *testing.T) {
 		})
 	}
 }
+
+func TestStream(t *testing.T) {
+	mode := Mode3
+	pub, priv, err := mode.GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	msg := []byte("hello world")
+
+	signature1 := mode.Sign(priv, msg)
+	signState := mode.Signer(priv)
+	_, err = signState.Write(msg[:3])
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = signState.Write(msg[3:])
+	signature2 := make([]byte, mode.SignatureSize())
+	signState.SignTo(signature2)
+
+	println(hexHash(signature1))
+	println(hexHash(signature2))
+
+	ok := mode.Verify(pub, msg, signature1)
+	if !ok {
+		t.Fatal()
+	}
+
+	verifState := mode.Verifier(pub)
+	_, err = verifState.Write(msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok = verifState.Verify(signature2)
+	if !ok {
+		t.Fatal()
+	}
+}

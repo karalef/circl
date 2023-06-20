@@ -43,6 +43,14 @@ func (m *implMode2AES) Verify(pk PublicKey, msg []byte, signature []byte) bool {
 	return mode2aes.Verify(ipk, msg, signature)
 }
 
+func (m *implMode2AES) Signer(sk PrivateKey) Signer {
+	return mode2aes.NewSigner(sk.(*mode2aes.PrivateKey))
+}
+
+func (m *implMode2AES) Verifier(pk PublicKey) Verifier {
+	return mode2aes.NewVerifier(pk.(*mode2aes.PublicKey))
+}
+
 func (m *implMode2AES) PublicKeyFromBytes(data []byte) PublicKey {
 	var ret mode2aes.PublicKey
 	if len(data) != mode2aes.PublicKeySize {

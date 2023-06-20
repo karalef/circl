@@ -38,6 +38,7 @@ import (
 type PublicKey interface {
 	// Packs public key
 	Bytes() []byte
+	Equal(crypto.PublicKey) bool
 }
 
 // PrivateKey is a Dilithium public key.
@@ -47,8 +48,29 @@ type PublicKey interface {
 type PrivateKey interface {
 	// Packs private key
 	Bytes() []byte
+	Equal(crypto.PrivateKey) bool
+}
 
-	crypto.Signer
+// Signer represents a Dilithium signature state.
+type Signer interface {
+	io.Writer
+
+	// Sign signs the written message and returns the signature.
+	Sign() []byte
+
+	// SignTo creates a signature on the written message and writes it to
+	// the given buffer.
+	SignTo(buf []byte)
+}
+
+// Verifier represents a Dilithium signature verification state.
+type Verifier interface {
+	io.Writer
+
+	// Verify checks whether the given signature is a valid signature set by
+	// the private key corresponding to the specified public key on the
+	// written message.
+	Verify(signature []byte) bool
 }
 
 // Mode is a certain configuration of the Dilithium signature scheme.
@@ -69,12 +91,20 @@ type Mode interface {
 	// It will panic if pk is of the wrong mode.
 	Verify(pk PublicKey, msg []byte, signature []byte) bool
 
-	// Unpacks a public key.  Panics if the buffer is not of PublicKeySize()
-	// length.  Precomputes values to speed up subsequent calls to Verify.
+	// Signer creates a signature state.
+	// It will panic if sk is of the wrong mode.
+	Signer(sk PrivateKey) Signer
+
+	// Verifier creates a signature verification state.
+	// It will panic if pk is of the wrong mode.
+	Verifier(pk PublicKey) Verifier
+
+	// Unpacks a public key. Panics if the buffer is not of PublicKeySize()
+	// length. Precomputes values to speed up subsequent calls to Verify.
 	PublicKeyFromBytes([]byte) PublicKey
 
-	// Unpacks a private key.  Panics if the buffer is not
-	// of PrivateKeySize() length.  Precomputes values to speed up subsequent
+	// Unpacks a private key. Panics if the buffer is not
+	// of PrivateKeySize() length. Precomputes values to speed up subsequent
 	// calls to Sign(To).
 	PrivateKeyFromBytes([]byte) PrivateKey
 
@@ -84,10 +114,10 @@ type Mode interface {
 	// PublicKeySize returns the size of a packed PublicKey
 	PublicKeySize() int
 
-	// PrivateKeySize returns the size  of a packed PrivateKey
+	// PrivateKeySize returns the size of a packed PrivateKey
 	PrivateKeySize() int
 
-	// SignatureSize returns the size  of a signature
+	// SignatureSize returns the size of a signature
 	SignatureSize() int
 
 	// Name returns the name of this mode
