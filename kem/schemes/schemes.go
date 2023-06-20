@@ -19,7 +19,6 @@ package schemes
 import (
 	"strings"
 
-	"github.com/cloudflare/circl/hpke"
 	"github.com/cloudflare/circl/kem"
 	"github.com/cloudflare/circl/kem/frodo/frodo640shake"
 	"github.com/cloudflare/circl/kem/hybrid"
@@ -29,11 +28,6 @@ import (
 )
 
 var allSchemes = [...]kem.Scheme{
-	hpke.KEM_P256_HKDF_SHA256.Scheme(),
-	hpke.KEM_P384_HKDF_SHA384.Scheme(),
-	hpke.KEM_P521_HKDF_SHA512.Scheme(),
-	hpke.KEM_X25519_HKDF_SHA256.Scheme(),
-	hpke.KEM_X448_HKDF_SHA512.Scheme(),
 	frodo640shake.Scheme(),
 	kyber512.Scheme(),
 	kyber768.Scheme(),
