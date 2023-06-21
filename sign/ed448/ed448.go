@@ -33,8 +33,8 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/cloudflare/circl/ecc/goldilocks"
-	"github.com/cloudflare/circl/internal/sha3"
+	"github.com/karalef/circl/ecc/goldilocks"
+	"github.com/karalef/circl/internal/sha3"
 )
 
 const (

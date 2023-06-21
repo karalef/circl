@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cloudflare/circl/group"
-	"github.com/cloudflare/circl/internal/test"
+	"github.com/karalef/circl/group"
+	"github.com/karalef/circl/internal/test"
 )
 
 var allGroups = []group.Group{

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cloudflare/circl/internal/test"
-	"github.com/cloudflare/circl/sign/ed25519"
+	"github.com/karalef/circl/internal/test"
+	"github.com/karalef/circl/sign/ed25519"
 )
 
 type rfc8032Vector struct {

@@ -5,8 +5,8 @@ import (
 	"encoding"
 	"testing"
 
-	"github.com/cloudflare/circl/ecc/goldilocks"
-	"github.com/cloudflare/circl/internal/test"
+	"github.com/karalef/circl/ecc/goldilocks"
+	"github.com/karalef/circl/internal/test"
 )
 
 func randomPoint() *goldilocks.Point {

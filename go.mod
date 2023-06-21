@@ -1,4 +1,4 @@
-module github.com/cloudflare/circl
+module github.com/karalef/circl
 
 go 1.19
 

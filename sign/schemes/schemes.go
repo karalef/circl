@@ -9,9 +9,9 @@ package schemes
 import (
 	"strings"
 
-	"github.com/cloudflare/circl/sign"
-	"github.com/cloudflare/circl/sign/eddilithium2"
-	"github.com/cloudflare/circl/sign/eddilithium3"
+	"github.com/karalef/circl/sign"
+	"github.com/karalef/circl/sign/eddilithium2"
+	"github.com/karalef/circl/sign/eddilithium3"
 )
 
 var allSchemes = [...]sign.Scheme{

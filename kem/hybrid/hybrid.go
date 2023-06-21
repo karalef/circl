@@ -34,11 +34,11 @@ import (
 	cryptoRand "crypto/rand"
 	"errors"
 
-	"github.com/cloudflare/circl/internal/sha3"
-	"github.com/cloudflare/circl/kem"
-	"github.com/cloudflare/circl/kem/kyber/kyber1024"
-	"github.com/cloudflare/circl/kem/kyber/kyber512"
-	"github.com/cloudflare/circl/kem/kyber/kyber768"
+	"github.com/karalef/circl/internal/sha3"
+	"github.com/karalef/circl/kem"
+	"github.com/karalef/circl/kem/kyber/kyber1024"
+	"github.com/karalef/circl/kem/kyber/kyber512"
+	"github.com/karalef/circl/kem/kyber/kyber768"
 )
 
 var ErrUninitialized = errors.New("public or private key not initialized")
