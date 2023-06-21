@@ -37,13 +37,42 @@ type Scheme interface {
 	// GenerateKeyPair creates a new key pair.
 	GenerateKeyPair() (PublicKey, PrivateKey, error)
 
+	// DeriveKeyPair deterministically derives a pair of keys from a seed.
+	// Panics if the length of seed is not equal to the value returned by
+	// SeedSize.
+	DeriveKeyPair(seed []byte) (PublicKey, PrivateKey)
+
 	// Encapsulate generates a shared key ss for the public key and
 	// encapsulates it into a ciphertext ct.
-	Encapsulate(pk PublicKey) (ct, ss []byte, err error)
+	// seed may be nil, in which case crypto/rand.Reader is used to generate one.
+	//
+	// Panics if key is nil or wrong type.
+	Encapsulate(pk PublicKey, seed []byte) (ct, ss []byte, err error)
+
+	// EncapsulateTo generates a shared key ss for the public
+	// key deterministically from the given seed and encapsulates it into
+	// a ciphertext ct. If unsure, you're better off using Encapsulate().
+	//
+	// Panics if ct, ss or seed are not of length CiphertextSize, SharedKeySize
+	// and EncapsulationSeedSize respectively.
+	//
+	// Panics if key is nil or wrong type.
+	EncapsulateTo(pk PublicKey, ct, ss, seed []byte)
 
 	// Returns the shared key encapsulated in ciphertext ct for the
 	// private key sk.
-	Decapsulate(sk PrivateKey, ct []byte) ([]byte, error)
+	//
+	// Panics if key is nil or wrong type.
+	Decapsulate(sk PrivateKey, ct []byte) (ss []byte, err error)
+
+	// DecapsulateTo computes the shared key which is encapsulated in ct
+	// for the private key.
+	//
+	// Panics if ct or ss are not of length CiphertextSize and SharedKeySize
+	// respectively.
+	//
+	// Panics if key is nil or wrong type.
+	DecapsulateTo(sk PrivateKey, ss, ct []byte)
 
 	// Unmarshals a PublicKey from the provided buffer.
 	UnmarshalBinaryPublicKey([]byte) (PublicKey, error)
@@ -63,30 +92,11 @@ type Scheme interface {
 	// Size of packed public keys.
 	PublicKeySize() int
 
-	// DeriveKeyPair deterministicallly derives a pair of keys from a seed.
-	// Panics if the length of seed is not equal to the value returned by
-	// SeedSize.
-	DeriveKeyPair(seed []byte) (PublicKey, PrivateKey)
-
-	// Size of seed used in DeriveKey
+	// Size of seed used in DeriveKeyPair.
 	SeedSize() int
 
-	// EncapsulateDeterministically generates a shared key ss for the public
-	// key deterministically from the given seed and encapsulates it into
-	// a ciphertext ct. If unsure, you're better off using Encapsulate().
-	EncapsulateDeterministically(pk PublicKey, seed []byte) (
-		ct, ss []byte, err error)
-
-	// Size of seed used in EncapsulateDeterministically().
+	// Size of seed used in EncapsulateDeterministically.
 	EncapsulationSeedSize() int
-}
-
-// AuthScheme represents a KEM that supports authenticated key encapsulation.
-type AuthScheme interface {
-	Scheme
-	AuthEncapsulate(pkr PublicKey, sks PrivateKey) (ct, ss []byte, err error)
-	AuthEncapsulateDeterministically(pkr PublicKey, sks PrivateKey, seed []byte) (ct, ss []byte, err error)
-	AuthDecapsulate(skr PrivateKey, ct []byte, pks PublicKey) ([]byte, error)
 }
 
 var (

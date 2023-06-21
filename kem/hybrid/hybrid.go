@@ -31,6 +31,7 @@
 package hybrid
 
 import (
+	cryptoRand "crypto/rand"
 	"errors"
 
 	"github.com/cloudflare/circl/internal/sha3"
@@ -53,15 +54,6 @@ func Kyber768X448() kem.Scheme { return kyber768X4 }
 
 // Returns the hybrid KEM of Kyber1024Draft00 and X448.
 func Kyber1024X448() kem.Scheme { return kyber1024X }
-
-// Returns the hybrid KEM of Kyber768Draft00 and P-256.
-func P256Kyber768Draft00() kem.Scheme { return p256Kyber768Draft00 }
-
-var p256Kyber768Draft00 kem.Scheme = &scheme{
-	"P256Kyber768Draft00",
-	p256Kem,
-	kyber768.Scheme(),
-}
 
 var kyber512X kem.Scheme = &scheme{
 	"Kyber512-X25519",
@@ -240,30 +232,32 @@ func (sch *scheme) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	return &publicKey{sch, pk1, pk2}, &privateKey{sch, sk1, sk2}
 }
 
-func (sch *scheme) Encapsulate(pk kem.PublicKey) (ct, ss []byte, err error) {
-	pub, ok := pk.(*publicKey)
-	if !ok {
-		return nil, nil, kem.ErrTypeMismatch
+func (sch *scheme) Encapsulate(pk kem.PublicKey, seed []byte) (ct, ss []byte, err error) {
+	if seed == nil {
+		seed = make([]byte, sch.EncapsulationSeedSize())
+		_, err = cryptoRand.Read(seed)
+		if err != nil {
+			return
+		}
+	} else if len(seed) != sch.EncapsulationSeedSize() {
+		return nil, nil, kem.ErrSeedSize
 	}
 
-	ct1, ss1, err := sch.first.Encapsulate(pub.first)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	ct2, ss2, err := sch.second.Encapsulate(pub.second)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return append(ct1, ct2...), append(ss1, ss2...), nil
+	ct = make([]byte, sch.CiphertextSize())
+	ss = make([]byte, sch.SharedKeySize())
+	sch.EncapsulateTo(pk, ct, ss, seed)
+	return
 }
 
-func (sch *scheme) EncapsulateDeterministically(
-	pk kem.PublicKey, seed []byte,
-) (ct, ss []byte, err error) {
+func (sch *scheme) EncapsulateTo(pk kem.PublicKey, ct, ss, seed []byte) {
+	if len(ct) != sch.CiphertextSize() {
+		panic(kem.ErrCiphertextSize)
+	}
+	if len(ss) != sch.SharedKeySize() {
+		panic("ss must be of length SharedKeySize")
+	}
 	if len(seed) != sch.EncapsulationSeedSize() {
-		return nil, nil, kem.ErrSeedSize
+		panic(kem.ErrSeedSize)
 	}
 
 	h := sha3.NewShake256()
@@ -275,18 +269,11 @@ func (sch *scheme) EncapsulateDeterministically(
 
 	pub, ok := pk.(*publicKey)
 	if !ok {
-		return nil, nil, kem.ErrTypeMismatch
+		panic(kem.ErrTypeMismatch)
 	}
 
-	ct1, ss1, err := sch.first.EncapsulateDeterministically(pub.first, first)
-	if err != nil {
-		return nil, nil, err
-	}
-	ct2, ss2, err := sch.second.EncapsulateDeterministically(pub.second, second)
-	if err != nil {
-		return nil, nil, err
-	}
-	return append(ct1, ct2...), append(ss1, ss2...), nil
+	sch.first.EncapsulateTo(pub.first, ct[:sch.first.CiphertextSize()], ss[:sch.first.SharedKeySize()], first)
+	sch.second.EncapsulateTo(pub.second, ct[sch.first.CiphertextSize():], ss[sch.first.SharedKeySize():], second)
 }
 
 func (sch *scheme) Decapsulate(sk kem.PrivateKey, ct []byte) ([]byte, error) {
@@ -294,21 +281,28 @@ func (sch *scheme) Decapsulate(sk kem.PrivateKey, ct []byte) ([]byte, error) {
 		return nil, kem.ErrCiphertextSize
 	}
 
-	priv, ok := sk.(*privateKey)
-	if !ok {
-		return nil, kem.ErrTypeMismatch
+	ss := make([]byte, sch.SharedKeySize())
+	sch.DecapsulateTo(sk, ss, ct)
+	return ss, nil
+}
+
+func (sch *scheme) DecapsulateTo(sk kem.PrivateKey, ss, ct []byte) {
+	if len(ct) != sch.CiphertextSize() {
+		panic(kem.ErrCiphertextSize)
+	}
+	if len(ss) != sch.SharedKeySize() {
+		panic("ss must be of length SharedKeySize")
 	}
 
+	priv, ok := sk.(*privateKey)
+	if !ok {
+		panic(kem.ErrTypeMismatch)
+	}
+
+	firstSharedSize := sch.first.SharedKeySize()
 	firstSize := sch.first.CiphertextSize()
-	ss1, err := sch.first.Decapsulate(priv.first, ct[:firstSize])
-	if err != nil {
-		return nil, err
-	}
-	ss2, err := sch.second.Decapsulate(priv.second, ct[firstSize:])
-	if err != nil {
-		return nil, err
-	}
-	return append(ss1, ss2...), nil
+	sch.first.DecapsulateTo(priv.first, ss[:firstSharedSize], ct[:firstSize])
+	sch.second.DecapsulateTo(priv.second, ss[firstSharedSize:], ct[firstSize:])
 }
 
 func (sch *scheme) UnmarshalBinaryPublicKey(buf []byte) (kem.PublicKey, error) {

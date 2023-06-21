@@ -122,15 +122,6 @@ func (sch *xScheme) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	return sk.Public(), &sk
 }
 
-func (sch *xScheme) Encapsulate(pk kem.PublicKey) (ct, ss []byte, err error) {
-	seed := make([]byte, sch.EncapsulationSeedSize())
-	_, err = cryptoRand.Read(seed)
-	if err != nil {
-		return
-	}
-	return sch.EncapsulateDeterministically(pk, seed)
-}
-
 func (pk *xPublicKey) X(sk *xPrivateKey) []byte {
 	if pk.scheme != sk.scheme {
 		panic(kem.ErrTypeMismatch)
@@ -153,15 +144,35 @@ func (pk *xPublicKey) X(sk *xPrivateKey) []byte {
 	panic(kem.ErrTypeMismatch)
 }
 
-func (sch *xScheme) EncapsulateDeterministically(
-	pk kem.PublicKey, seed []byte,
-) (ct, ss []byte, err error) {
-	if len(seed) != sch.EncapsulationSeedSize() {
+func (sch *xScheme) Encapsulate(pk kem.PublicKey, seed []byte) (ct, ss []byte, err error) {
+	if seed == nil {
+		seed = make([]byte, sch.EncapsulationSeedSize())
+		_, err = cryptoRand.Read(seed)
+		if err != nil {
+			return
+		}
+	} else if len(seed) != sch.EncapsulationSeedSize() {
 		return nil, nil, kem.ErrSeedSize
+	}
+	ct = make([]byte, sch.CiphertextSize())
+	ss = make([]byte, sch.SharedKeySize())
+	sch.EncapsulateTo(pk, ct, ss, seed)
+	return
+}
+
+func (sch *xScheme) EncapsulateTo(pk kem.PublicKey, ct, ss, seed []byte) {
+	if len(ct) != sch.CiphertextSize() {
+		panic(kem.ErrCiphertextSize)
+	}
+	if len(ss) != sch.SharedKeySize() {
+		panic("ss must be of length SharedKeySize")
+	}
+	if len(seed) != sch.EncapsulationSeedSize() {
+		panic(kem.ErrSeedSize)
 	}
 	pub, ok := pk.(*xPublicKey)
 	if !ok || pub.scheme != sch {
-		return nil, nil, kem.ErrTypeMismatch
+		panic(kem.ErrTypeMismatch)
 	}
 
 	pk2, sk2 := sch.DeriveKeyPair(seed)
@@ -187,6 +198,27 @@ func (sch *xScheme) Decapsulate(sk kem.PrivateKey, ct []byte) ([]byte, error) {
 
 	ss := pk.(*xPublicKey).X(priv)
 	return ss, nil
+}
+
+func (sch *xScheme) DecapsulateTo(sk kem.PrivateKey, ss, ct []byte) {
+	if len(ct) != sch.CiphertextSize() {
+		panic(kem.ErrCiphertextSize)
+	}
+	if len(ss) != sch.SharedKeySize() {
+		panic("ss must be of length SharedKeySize")
+	}
+
+	priv, ok := sk.(*xPrivateKey)
+	if !ok || priv.scheme != sch {
+		panic(kem.ErrTypeMismatch)
+	}
+
+	pk, err := sch.UnmarshalBinaryPublicKey(ct)
+	if err != nil {
+		panic(kem.ErrCipherText)
+	}
+
+	copy(ss, pk.(*xPublicKey).X(priv))
 }
 
 func (sch *xScheme) UnmarshalBinaryPublicKey(buf []byte) (kem.PublicKey, error) {

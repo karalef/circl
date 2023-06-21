@@ -58,7 +58,7 @@ func testPQCgenKATKem(t *testing.T, name, expected string) {
 		psk, _ := sk.MarshalBinary()
 
 		g2.Fill(eseed)
-		ct, ss, err := scheme.EncapsulateDeterministically(pk, eseed)
+		ct, ss, err := scheme.Encapsulate(pk, eseed)
 		if err != nil {
 			t.Fatal(err)
 		}

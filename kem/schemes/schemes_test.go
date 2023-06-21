@@ -33,7 +33,7 @@ func BenchmarkEncapsulate(b *testing.B) {
 		pk, _, _ := scheme.GenerateKeyPair()
 		b.Run(scheme.Name(), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				_, _, _ = scheme.Encapsulate(pk)
+				_, _, _ = scheme.Encapsulate(pk, nil)
 			}
 		})
 	}
@@ -44,7 +44,7 @@ func BenchmarkDecapsulate(b *testing.B) {
 	for _, scheme := range allSchemes {
 		scheme := scheme
 		pk, sk, _ := scheme.GenerateKeyPair()
-		ct, _, _ := scheme.Encapsulate(pk)
+		ct, _, _ := scheme.Encapsulate(pk, nil)
 		b.Run(scheme.Name(), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, _ = scheme.Decapsulate(sk, ct)
@@ -106,7 +106,7 @@ func TestApi(t *testing.T) {
 				t.Fatal()
 			}
 
-			ct, ss, err := scheme.Encapsulate(pk2)
+			ct, ss, err := scheme.Encapsulate(pk2, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -117,7 +117,7 @@ func TestApi(t *testing.T) {
 				t.Fatal()
 			}
 
-			ct3, ss3, err := scheme.Encapsulate(pk2)
+			ct3, ss3, err := scheme.Encapsulate(pk2, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -146,11 +146,6 @@ func Example_schemes() {
 		fmt.Println(sch.Name())
 	}
 	// Output:
-	// HPKE_KEM_P256_HKDF_SHA256
-	// HPKE_KEM_P384_HKDF_SHA384
-	// HPKE_KEM_P521_HKDF_SHA512
-	// HPKE_KEM_X25519_HKDF_SHA256
-	// HPKE_KEM_X448_HKDF_SHA512
 	// FrodoKEM-640-SHAKE
 	// Kyber512
 	// Kyber768
@@ -159,5 +154,4 @@ func Example_schemes() {
 	// Kyber768-X25519
 	// Kyber768-X448
 	// Kyber1024-X448
-	// P256Kyber768Draft00
 }
