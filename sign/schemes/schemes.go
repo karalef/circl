@@ -10,9 +10,17 @@ import (
 	"strings"
 
 	"github.com/karalef/circl/sign"
+	"github.com/karalef/circl/sign/dilithium"
 )
 
-var allSchemes = [...]sign.Scheme{}
+var allSchemes = [...]sign.Scheme{
+	dilithium.Mode2,
+	dilithium.Mode2AES,
+	dilithium.Mode3,
+	dilithium.Mode3AES,
+	dilithium.Mode5,
+	dilithium.Mode5AES,
+}
 
 var allSchemeNames map[string]sign.Scheme
 

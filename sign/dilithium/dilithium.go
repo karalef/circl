@@ -29,13 +29,23 @@ import (
 	"github.com/karalef/circl/sign/dilithium/mode5aes"
 )
 
+// Dilithium modes.
+var (
+	Mode2    = mode2.Scheme
+	Mode2AES = mode2aes.Scheme
+	Mode3    = mode3.Scheme
+	Mode3AES = mode3aes.Scheme
+	Mode5    = mode5.Scheme
+	Mode5AES = mode5aes.Scheme
+)
+
 var modes = map[string]sign.Scheme{
-	"Dilithium2":     mode2.Scheme,
-	"Dilithium2-AES": mode2aes.Scheme,
-	"Dilithium3":     mode3.Scheme,
-	"Dilithium3-AES": mode3aes.Scheme,
-	"Dilithium5":     mode5.Scheme,
-	"Dilithium5-AES": mode5aes.Scheme,
+	"Dilithium2":     Mode2,
+	"Dilithium2-AES": Mode2AES,
+	"Dilithium3":     Mode3,
+	"Dilithium3-AES": Mode3AES,
+	"Dilithium5":     Mode5,
+	"Dilithium5-AES": Mode5AES,
 }
 
 // ModeNames returns the list of supported modes.
