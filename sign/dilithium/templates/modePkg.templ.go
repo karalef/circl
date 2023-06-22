@@ -11,8 +11,6 @@
 package {{.Pkg}}
 
 import (
-	"crypto"
-	"errors"
 	"fmt"
 	"io"
 
@@ -140,7 +138,7 @@ func (sk *PrivateKey) MarshalBinary() ([]byte, error) {
 // Unpacks the public key from data.
 func (pk *PublicKey) UnmarshalBinary(data []byte) error {
 	if len(data) != PublicKeySize {
-		return errors.New("packed public key must be of internal.PublicKeySize bytes")
+		return sign.ErrPubKeySize
 	}
 	var buf [PublicKeySize]byte
 	copy(buf[:], data)
@@ -151,33 +149,12 @@ func (pk *PublicKey) UnmarshalBinary(data []byte) error {
 // Unpacks the private key from data.
 func (sk *PrivateKey) UnmarshalBinary(data []byte) error {
 	if len(data) != PrivateKeySize {
-		return errors.New("packed private key must be of internal.PrivateKeySize bytes")
+		return sign.ErrPrivKeySize
 	}
 	var buf [PrivateKeySize]byte
 	copy(buf[:], data)
 	sk.Unpack(&buf)
 	return nil
-}
-
-// Sign signs the given message.
-//
-// opts.HashFunc() must return zero, which can be achieved by passing
-// crypto.Hash(0) for opts.  rand is ignored.  Will only return an error
-// if opts.HashFunc() is non-zero.
-//
-// This function is used to make PrivateKey implement the crypto.Signer
-// interface.  The package-level SignTo function might be more convenient
-// to use.
-func (sk *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) (
-	signature []byte, err error) {
-	var sig [SignatureSize]byte
-
-	if opts.HashFunc() != crypto.Hash(0) {
-		return nil, errors.New("dilithium: cannot sign hashed message")
-	}
-
-	SignTo(sk, msg, sig[:])
-	return sig[:], nil
 }
 
 // Computes the public key corresponding to this private key.
