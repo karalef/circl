@@ -22,7 +22,7 @@ func TestApi(t *testing.T) {
 				t.Fatal()
 			}
 
-			pk, sk, err := scheme.GenerateKey()
+			pk, sk, err := scheme.GenerateKey(nil)
 			if err != nil {
 				t.Fatal()
 			}
@@ -110,7 +110,7 @@ func BenchmarkGenerateKeyPair(b *testing.B) {
 		scheme := scheme
 		b.Run(scheme.Name(), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				_, _, _ = scheme.GenerateKey()
+				_, _, _ = scheme.GenerateKey(nil)
 			}
 		})
 	}
@@ -121,7 +121,7 @@ func BenchmarkSign(b *testing.B) {
 	for _, scheme := range allSchemes {
 		msg := []byte(fmt.Sprintf("Signing with %s", scheme.Name()))
 		scheme := scheme
-		_, sk, _ := scheme.GenerateKey()
+		_, sk, _ := scheme.GenerateKey(nil)
 		b.Run(scheme.Name(), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_ = scheme.Sign(sk, msg)
@@ -135,7 +135,7 @@ func BenchmarkVerify(b *testing.B) {
 	for _, scheme := range allSchemes {
 		msg := []byte(fmt.Sprintf("Signing with %s", scheme.Name()))
 		scheme := scheme
-		pk, sk, _ := scheme.GenerateKey()
+		pk, sk, _ := scheme.GenerateKey(nil)
 		sig := scheme.Sign(sk, msg)
 		b.Run(scheme.Name(), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {

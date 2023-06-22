@@ -36,8 +36,14 @@ func Example() {
 	packedPk := pk.Bytes()
 
 	// Load it again
-	sk2 := mode.PrivateKeyFromBytes(packedSk)
-	pk2 := mode.PublicKeyFromBytes(packedPk)
+	sk2, err := mode.UnmarshalBinaryPrivateKey(packedSk)
+	if err != nil {
+		panic(err)
+	}
+	pk2, err := mode.UnmarshalBinaryPublicKey(packedPk)
+	if err != nil {
+		panic(err)
+	}
 
 	// Creates a signature on our message with the generated private key.
 	msg := []byte("Some message")

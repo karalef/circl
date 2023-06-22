@@ -9,8 +9,10 @@ package mode3
 import (
 	"crypto"
 	"errors"
+	"fmt"
 	"io"
 
+	"github.com/karalef/circl/sign"
 	"github.com/karalef/circl/sign/dilithium/internal/common"
 	"github.com/karalef/circl/sign/dilithium/mode3/internal"
 )
@@ -37,6 +39,13 @@ type PrivateKey internal.PrivateKey
 
 // State is the type of Dilithium3 state
 type State = internal.State
+
+var (
+	_ sign.PublicKey = (*PublicKey)(nil)
+	_ sign.PrivateKey = (*PrivateKey)(nil)
+	_ sign.Signer = (*State)(nil)
+	_ sign.Verifier = (*State)(nil)
+)
 
 // GenerateKey generates a public/private key pair using entropy from rand.
 // If rand is nil, crypto/rand.Reader will be used.
@@ -127,7 +136,7 @@ func (sk *PrivateKey) MarshalBinary() ([]byte, error) {
 // Unpacks the public key from data.
 func (pk *PublicKey) UnmarshalBinary(data []byte) error {
 	if len(data) != PublicKeySize {
-		return errors.New("packed public key must be of mode3.PublicKeySize bytes")
+		return errors.New("packed public key must be of internal.PublicKeySize bytes")
 	}
 	var buf [PublicKeySize]byte
 	copy(buf[:], data)
@@ -138,7 +147,7 @@ func (pk *PublicKey) UnmarshalBinary(data []byte) error {
 // Unpacks the private key from data.
 func (sk *PrivateKey) UnmarshalBinary(data []byte) error {
 	if len(data) != PrivateKeySize {
-		return errors.New("packed private key must be of mode3.PrivateKeySize bytes")
+		return errors.New("packed private key must be of internal.PrivateKeySize bytes")
 	}
 	var buf [PrivateKeySize]byte
 	copy(buf[:], data)
@@ -171,12 +180,12 @@ func (sk *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) (
 //
 // Returns a *PublicKey.  The type crypto.PublicKey is used to make
 // PrivateKey implement the crypto.Signer interface.
-func (sk *PrivateKey) Public() crypto.PublicKey {
+func (sk *PrivateKey) Public() sign.PublicKey {
 	return (*PublicKey)((*internal.PrivateKey)(sk).Public())
 }
 
 // Equal returns whether the two private keys equal.
-func (sk *PrivateKey) Equal(other crypto.PrivateKey) bool {
+func (sk *PrivateKey) Equal(other sign.PrivateKey) bool {
 	castOther, ok := other.(*PrivateKey)
 	if !ok {
 		return false
@@ -185,10 +194,99 @@ func (sk *PrivateKey) Equal(other crypto.PrivateKey) bool {
 }
 
 // Equal returns whether the two public keys equal.
-func (pk *PublicKey) Equal(other crypto.PublicKey) bool {
+func (pk *PublicKey) Equal(other sign.PublicKey) bool {
 	castOther, ok := other.(*PublicKey)
 	if !ok {
 		return false
 	}
 	return (*internal.PublicKey)(pk).Equal((*internal.PublicKey)(castOther))
+}
+
+func (sk *PrivateKey) Scheme() sign.Scheme {
+	return Scheme
+}
+
+func (pk *PublicKey) Scheme() sign.Scheme {
+	return Scheme
+}
+
+// implMode3 implements the mode.Mode interface for Dilithium3.
+type implMode3 struct{}
+
+// Scheme is Dilithium in mode "Dilithium3".
+var Scheme sign.Scheme = &implMode3{}
+
+func (m *implMode3) GenerateKey(rand io.Reader) (sign.PublicKey, sign.PrivateKey, error) {
+	return GenerateKey(rand)
+}
+
+func (m *implMode3) DeriveKey(seed []byte) (sign.PublicKey, sign.PrivateKey) {
+	if len(seed) != common.SeedSize {
+		panic(fmt.Sprintf("seed must be of length %d", common.SeedSize))
+	}
+	seedBuf := [common.SeedSize]byte{}
+	copy(seedBuf[:], seed)
+	return NewKeyFromSeed(&seedBuf)
+}
+
+func (m *implMode3) Sign(sk sign.PrivateKey, msg []byte) []byte {
+	isk := sk.(*PrivateKey)
+	ret := [SignatureSize]byte{}
+	SignTo(isk, msg, ret[:])
+	return ret[:]
+}
+
+func (m *implMode3) Verify(pk sign.PublicKey, msg []byte, signature []byte) bool {
+	ipk := pk.(*PublicKey)
+	return Verify(ipk, msg, signature)
+}
+
+func (m *implMode3) Signer(sk sign.PrivateKey) sign.Signer {
+	return NewSigner(sk.(*PrivateKey))
+}
+
+func (m *implMode3) Verifier(pk sign.PublicKey) sign.Verifier {
+	return NewVerifier(pk.(*PublicKey))
+}
+
+func (m *implMode3) UnmarshalBinaryPublicKey(data []byte) (sign.PublicKey, error) {
+	var ret PublicKey
+	if len(data) != PublicKeySize {
+		return nil, sign.ErrPubKeySize
+	}
+	var buf [PublicKeySize]byte
+	copy(buf[:], data)
+	ret.Unpack(&buf)
+	return &ret, nil
+}
+
+func (m *implMode3) UnmarshalBinaryPrivateKey(data []byte) (sign.PrivateKey, error) {
+	var ret PrivateKey
+	if len(data) != PrivateKeySize {
+		return nil, sign.ErrPrivKeySize
+	}
+	var buf [PrivateKeySize]byte
+	copy(buf[:], data)
+	ret.Unpack(&buf)
+	return &ret, nil
+}
+
+func (m *implMode3) SeedSize() int {
+	return common.SeedSize
+}
+
+func (m *implMode3) PublicKeySize() int {
+	return internal.PublicKeySize
+}
+
+func (m *implMode3) PrivateKeySize() int {
+	return internal.PrivateKeySize
+}
+
+func (m *implMode3) SignatureSize() int {
+	return internal.SignatureSize
+}
+
+func (m *implMode3) Name() string {
+	return "Dilithium3"
 }

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/karalef/circl/internal/sha3"
+	"github.com/karalef/circl/sign/dilithium/mode3"
 )
 
 func hexHash(in []byte) string {
@@ -53,7 +54,7 @@ func TestNewKeyFromSeed(t *testing.T) {
 				t.Fatal()
 			}
 			var seed [32]byte
-			pk, sk := mode.NewKeyFromSeed(seed[:])
+			pk, sk := mode.DeriveKey(seed[:])
 
 			pkh := hexHash(pk.Bytes())
 			skh := hexHash(sk.Bytes())
@@ -68,7 +69,7 @@ func TestNewKeyFromSeed(t *testing.T) {
 }
 
 func TestStream(t *testing.T) {
-	mode := Mode3
+	mode := mode3.Scheme
 	pub, priv, err := mode.GenerateKey(nil)
 	if err != nil {
 		t.Fatal(err)

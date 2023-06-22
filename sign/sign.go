@@ -18,6 +18,9 @@ type PublicKey interface {
 	Scheme() Scheme
 	Equal(PublicKey) bool
 
+	// Allocates a byte slice and writes the public key to it.
+	Bytes() []byte
+
 	encoding.BinaryMarshaler
 }
 
@@ -27,6 +30,9 @@ type PrivateKey interface {
 	Scheme() Scheme
 	Public() PublicKey
 	Equal(PrivateKey) bool
+
+	// Allocates a byte slice and writes the private key to it.
+	Bytes() []byte
 
 	encoding.BinaryMarshaler
 }
@@ -59,7 +65,7 @@ type Scheme interface {
 	Name() string
 
 	// GenerateKey creates a new key-pair.
-	GenerateKey() (PublicKey, PrivateKey, error)
+	GenerateKey(rand io.Reader) (PublicKey, PrivateKey, error)
 
 	// Creates a signature using the PrivateKey on the given message and
 	// returns the signature.

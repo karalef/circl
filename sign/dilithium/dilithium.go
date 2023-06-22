@@ -16,115 +16,27 @@
 // so one can be chosen at runtime.
 //
 // The authors of Dilithium recommend to combine it with a "pre-quantum"
-// signature scheme.  The packages
-//
-//	github.com/cloudflare/circl/sign/eddilithium2
-//	github.com/cloudflare/circl/sign/eddilithium3
-//
-// implement such hybrids of Dilithium2 with Ed25519 respectively and
-// Dilithium3 with Ed448.  These packages are a drop in replacements for the
-// mode subpackages of this package.
+// signature scheme.
 package dilithium
 
 import (
-	"crypto"
-	"io"
+	"github.com/karalef/circl/sign"
+	"github.com/karalef/circl/sign/dilithium/mode2"
+	"github.com/karalef/circl/sign/dilithium/mode2aes"
+	"github.com/karalef/circl/sign/dilithium/mode3"
+	"github.com/karalef/circl/sign/dilithium/mode3aes"
+	"github.com/karalef/circl/sign/dilithium/mode5"
+	"github.com/karalef/circl/sign/dilithium/mode5aes"
 )
 
-// PublicKey is a Dilithium public key.
-//
-// The structure contains values precomputed during unpacking/key generation
-// and is therefore significantly larger than a packed public key.
-type PublicKey interface {
-	// Packs public key
-	Bytes() []byte
-	Equal(crypto.PublicKey) bool
+var modes = map[string]sign.Scheme{
+	"Dilithium2":     mode2.Scheme,
+	"Dilithium2-AES": mode2aes.Scheme,
+	"Dilithium3":     mode3.Scheme,
+	"Dilithium3-AES": mode3aes.Scheme,
+	"Dilithium5":     mode5.Scheme,
+	"Dilithium5-AES": mode5aes.Scheme,
 }
-
-// PrivateKey is a Dilithium public key.
-//
-// The structure contains values precomputed during unpacking/key generation
-// and is therefore significantly larger than a packed private key.
-type PrivateKey interface {
-	// Packs private key
-	Bytes() []byte
-	Equal(crypto.PrivateKey) bool
-}
-
-// Signer represents a Dilithium signature state.
-type Signer interface {
-	io.Writer
-
-	// Sign signs the written message and returns the signature.
-	Sign() []byte
-
-	// SignTo creates a signature on the written message and writes it to
-	// the given buffer.
-	SignTo(buf []byte)
-}
-
-// Verifier represents a Dilithium signature verification state.
-type Verifier interface {
-	io.Writer
-
-	// Verify checks whether the given signature is a valid signature set by
-	// the private key corresponding to the specified public key on the
-	// written message.
-	Verify(signature []byte) bool
-}
-
-// Mode is a certain configuration of the Dilithium signature scheme.
-type Mode interface {
-	// GenerateKey generates a public/private key pair using entropy from rand.
-	// If rand is nil, crypto/rand.Reader will be used.
-	GenerateKey(rand io.Reader) (PublicKey, PrivateKey, error)
-
-	// NewKeyFromSeed derives a public/private key pair using the given seed.
-	// Panics if len(seed) != SeedSize()
-	NewKeyFromSeed(seed []byte) (PublicKey, PrivateKey)
-
-	// Sign signs the given message and returns the signature.
-	// It will panic if sk has not been generated for this mode.
-	Sign(sk PrivateKey, msg []byte) []byte
-
-	// Verify checks whether the given signature by pk on msg is valid.
-	// It will panic if pk is of the wrong mode.
-	Verify(pk PublicKey, msg []byte, signature []byte) bool
-
-	// Signer creates a signature state.
-	// It will panic if sk is of the wrong mode.
-	Signer(sk PrivateKey) Signer
-
-	// Verifier creates a signature verification state.
-	// It will panic if pk is of the wrong mode.
-	Verifier(pk PublicKey) Verifier
-
-	// Unpacks a public key. Panics if the buffer is not of PublicKeySize()
-	// length. Precomputes values to speed up subsequent calls to Verify.
-	PublicKeyFromBytes([]byte) PublicKey
-
-	// Unpacks a private key. Panics if the buffer is not
-	// of PrivateKeySize() length. Precomputes values to speed up subsequent
-	// calls to Sign(To).
-	PrivateKeyFromBytes([]byte) PrivateKey
-
-	// SeedSize returns the size of the seed for NewKeyFromSeed
-	SeedSize() int
-
-	// PublicKeySize returns the size of a packed PublicKey
-	PublicKeySize() int
-
-	// PrivateKeySize returns the size of a packed PrivateKey
-	PrivateKeySize() int
-
-	// SignatureSize returns the size of a signature
-	SignatureSize() int
-
-	// Name returns the name of this mode
-	Name() string
-}
-
-var modes = make(map[string]Mode)
 
 // ModeNames returns the list of supported modes.
 func ModeNames() []string {
@@ -136,6 +48,6 @@ func ModeNames() []string {
 }
 
 // ModeByName returns the mode with the given name or nil when not supported.
-func ModeByName(name string) Mode {
+func ModeByName(name string) sign.Scheme {
 	return modes[name]
 }

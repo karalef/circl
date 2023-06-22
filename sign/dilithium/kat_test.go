@@ -52,7 +52,7 @@ func TestPQCgenKATSign(t *testing.T) {
 
 				g2 := nist.NewDRBG(&seed)
 				g2.Fill(eseed[:])
-				pk, sk := mode.NewKeyFromSeed(eseed[:])
+				pk, sk := mode.DeriveKey(eseed[:])
 
 				fmt.Fprintf(f, "pk = %X\n", pk.Bytes())
 				fmt.Fprintf(f, "sk = %X\n", sk.Bytes())
