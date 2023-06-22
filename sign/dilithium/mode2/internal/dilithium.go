@@ -245,23 +245,21 @@ func (sk *PrivateKey) computeT0andT1(t0, t1 *VecK) {
 
 // NewSigner returns a new signature State.
 func NewSigner(sk *PrivateKey) *State {
-	return &State{
+	s := &State{
 		sk:    sk,
-		state: createState(sk.tr[:]),
+		state: sha3.NewShake256(),
 	}
+	s.Reset()
+	return s
 }
 
 // NewVerifier returns a new verification State.
 func NewVerifier(pk *PublicKey) *State {
-	return &State{
+	s := &State{
 		pk:    pk,
-		state: createState(pk.tr[:]),
+		state: sha3.NewShake256(),
 	}
-}
-
-func createState(tr []byte) sha3.State {
-	s := sha3.NewShake256()
-	_, _ = s.Write(tr)
+	s.Reset()
 	return s
 }
 
@@ -270,6 +268,16 @@ type State struct {
 	pk    *PublicKey
 	sk    *PrivateKey
 	state sha3.State
+}
+
+// Reset resets the state.
+func (s *State) Reset() {
+	s.state.Reset()
+	if s.pk != nil {
+		s.state.Write(s.pk.tr[:])
+		return
+	}
+	s.state.Write(s.sk.tr[:])
 }
 
 func (s *State) Write(p []byte) (int, error) {

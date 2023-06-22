@@ -41,6 +41,9 @@ type PrivateKey interface {
 type Signer interface {
 	io.Writer
 
+	// Reset resets the Signer.
+	Reset()
+
 	// Sign signs the written message and returns the signature.
 	Sign() []byte
 
@@ -52,6 +55,9 @@ type Signer interface {
 // Verifier represents a signature verification state.
 type Verifier interface {
 	io.Writer
+
+	// Reset resets the Verifier.
+	Reset()
 
 	// Verify checks whether the given signature is a valid signature set by
 	// the private key corresponding to the specified public key on the
