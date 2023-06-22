@@ -10,14 +10,9 @@ import (
 	"strings"
 
 	"github.com/karalef/circl/sign"
-	"github.com/karalef/circl/sign/eddilithium2"
-	"github.com/karalef/circl/sign/eddilithium3"
 )
 
-var allSchemes = [...]sign.Scheme{
-	eddilithium2.Scheme(),
-	eddilithium3.Scheme(),
-}
+var allSchemes = [...]sign.Scheme{}
 
 var allSchemeNames map[string]sign.Scheme
 

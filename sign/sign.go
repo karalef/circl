@@ -8,6 +8,7 @@ package sign
 import (
 	"encoding"
 	"errors"
+	"io"
 )
 
 // PublicKey is used to verify a signature set by the corresponding private
@@ -30,6 +31,28 @@ type PrivateKey interface {
 	encoding.BinaryMarshaler
 }
 
+// Signer represents a signature state.
+type Signer interface {
+	io.Writer
+
+	// Sign signs the written message and returns the signature.
+	Sign() []byte
+
+	// SignTo creates a signature on the written message and writes it to
+	// the given buffer.
+	SignTo(signature []byte)
+}
+
+// Verifier represents a signature verification state.
+type Verifier interface {
+	io.Writer
+
+	// Verify checks whether the given signature is a valid signature set by
+	// the private key corresponding to the specified public key on the
+	// written message.
+	Verify(signature []byte) bool
+}
+
 // A Scheme represents a specific instance of a signature scheme.
 type Scheme interface {
 	// Name of the scheme.
@@ -44,12 +67,22 @@ type Scheme interface {
 	// Panics if key is nil or wrong type.
 	Sign(sk PrivateKey, message []byte) []byte
 
+	// Signer creates a signature state.
+	//
+	// Panics if key is nil or wrong type.
+	Signer(sk PrivateKey) Signer
+
 	// Checks whether the given signature is a valid signature set by
 	// the private key corresponding to the given public key on the
 	// given message.
 	//
 	// Panics if key is nil or wrong type.
 	Verify(pk PublicKey, message []byte, signature []byte) bool
+
+	// Verifier creates a signature verification state.
+	//
+	// Panics if key is nil or wrong type.
+	Verifier(pk PublicKey) Verifier
 
 	// Deterministically derives a key-pair from a seed. If you're unsure,
 	// you're better off using GenerateKey().

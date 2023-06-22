@@ -2,16 +2,6 @@
 //
 // # Schemes Implemented
 //
-// Based on standard elliptic curves:
-//
-//	HPKE_KEM_P256_HKDF_SHA256, HPKE_KEM_P384_HKDF_SHA384, HPKE_KEM_P521_HKDF_SHA512
-//
-// Based on standard Diffie-Hellman functions:
-//
-//	HPKE_KEM_X25519_HKDF_SHA256, HPKE_KEM_X448_HKDF_SHA512
-//
-// Post-quantum kems:
-//
 //	FrodoKEM-640-SHAKE
 //	Kyber512, Kyber768, Kyber1024
 package schemes
@@ -21,7 +11,6 @@ import (
 
 	"github.com/karalef/circl/kem"
 	"github.com/karalef/circl/kem/frodo/frodo640shake"
-	"github.com/karalef/circl/kem/hybrid"
 	"github.com/karalef/circl/kem/kyber/kyber1024"
 	"github.com/karalef/circl/kem/kyber/kyber512"
 	"github.com/karalef/circl/kem/kyber/kyber768"
@@ -32,10 +21,6 @@ var allSchemes = [...]kem.Scheme{
 	kyber512.Scheme(),
 	kyber768.Scheme(),
 	kyber1024.Scheme(),
-	hybrid.Kyber512X25519(),
-	hybrid.Kyber768X25519(),
-	hybrid.Kyber768X448(),
-	hybrid.Kyber1024X448(),
 }
 
 var allSchemeNames map[string]kem.Scheme
